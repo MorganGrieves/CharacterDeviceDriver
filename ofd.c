@@ -1,22 +1,26 @@
 #include <linux/types.h>
 #include <linux/fs.h>
-#include <linux/version.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/cdev.h>
+#include <linux/device.h>
+#include <linux/init.h>
 
 #define NAME "my_dummy_device"
+
+static int my_dummy_device_open(struct inode *inode, struct file *file);
+static int my_dummy_device_close(struct inode *inode, struct file *file);
 
 struct cdev device_cdev;
 static struct class *device_class = NULL;
 static dev_t device_number;
 
-static struct file_operations device_fops
+static struct file_operations device_fops =
 {
     .owner = THIS_MODULE,
     .open = my_dummy_device_open,
-    .close = my_dummy_device_close
-}
+    .release = my_dummy_device_close
+};
 
 static int my_dummy_device_open(struct inode *inode, struct file *file)
 {
@@ -65,9 +69,9 @@ static int __init my_dummy_device_init(void)
     if (device_create(device_class, NULL, device_number, NULL, NAME) == NULL)
     {
         printk(KERN_ALERT "%s: failed to allocate device file", NAME);
-        cdel_del(&device_cdev);
+        cdev_del(&device_cdev);
         class_destroy(device_class);   
-        unregister _chrdev_region(device_number, 1);
+        unregister_chrdev_region(device_number, 1);
         return -1;
     }
 
@@ -76,15 +80,15 @@ static int __init my_dummy_device_init(void)
 
 static void __exit my_dummy_device_exit(void)
 {
-    cdel_del(&device_cdev);
+    cdev_del(&device_cdev);
     device_destroy(device_class, device_number);
     class_destroy(device_class);
-    unregister_chrdev_region(first, 3);
+    unregister_chrdev_region(device_number, 1);
     printk(KERN_INFO "Alvida: ofd unregistered");
 }
 
-module_init(ofd_init);
-module_exit(ofd_exit);
+module_init(my_dummy_device_init);
+module_exit(my_dummy_device_exit);
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Oleg Fedorov");
